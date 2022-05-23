@@ -1,73 +1,70 @@
-import Head from 'next/head'
-import clientPromise from '../lib/mongodb'
+import Head from "next/head";
+import clientPromise from "../lib/mongodb";
+import { useState, useEffect } from "react";
+//import { createItem } from '../server/create';
+import {ItemForm} from '../components/itemForm';
 
-export default function Home({ isConnected }) {
+export default function Home({ items }) {
+  const [itemDelete, setItemDelete] = useState(false);
+  const [isLoading, setLoading] = useState();
+
+  const handleDelete = async (props) => {
+setItemDelete(true);
+    console.log(props);
+    const data = await fetch(`http://localhost:3000/api/delete`, {
+      method: "DELETE",
+      body: props,
+    });
+    setItemDelete(false);
+    console.log(data);
+  };
+
   return (
     <div className="container">
       <Head>
-        <title>Create Next App</title>
+        <title>devinternchallenege2022</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main>
-        <h1 className="title">
-          Welcome to <a href="https://nextjs.org">Next.js with MongoDB!</a>
-        </h1>
+        <h1 className="title">Item Database</h1>
 
-        {isConnected ? (
-          <h2 className="subtitle">You are connected to MongoDB</h2>
-        ) : (
-          <h2 className="subtitle">
-            You are NOT connected to MongoDB. Check the <code>README.md</code>{' '}
-            for instructions.
-          </h2>
-        )}
+        <p className="description">Create, Read, Update and Delete.</p>
 
-        <p className="description">
-          Get started by editing <code>pages/index.js</code>
-        </p>
-
-        <div className="grid">
-          <a href="https://nextjs.org/docs" className="card">
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className="card">
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className="card"
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className="card"
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+        <div className="container">
+          <ItemForm />
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Description</th>
+                <th>Location</th>
+                <th></th>
+              </tr>
+            </thead>
+            {items.map((items) => {
+              return (
+                <tbody key={items._id}>
+                  <tr>
+                    <td>{items.item}</td>
+                    <td>{items.description}</td>
+                    <td>{items.location}</td>
+                    <td>
+                      <button
+                        onClick={() => {
+                          handleDelete(items["_id"]);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              );
+            })}
+          </table>
         </div>
       </main>
-
-      <footer>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className="logo" />
-        </a>
-      </footer>
 
       <style jsx>{`
         .container {
@@ -77,6 +74,20 @@ export default function Home({ isConnected }) {
           flex-direction: column;
           justify-content: center;
           align-items: center;
+        }
+
+        table {
+          border: 2px solid forestgreen;
+          width: 800px;
+          height: 200px;
+        }
+
+        th {
+          border-bottom: 1px solid black;
+        }
+
+        td {
+          text-align: center;
         }
 
         main {
@@ -219,28 +230,18 @@ export default function Home({ isConnected }) {
         }
       `}</style>
     </div>
-  )
+  );
 }
 
 export async function getServerSideProps(context) {
-  try {
-    await clientPromise
-    // `await clientPromise` will use the default database passed in the MONGODB_URI
-    // However you can use another database (e.g. myDatabase) by replacing the `await clientPromise` with the following code:
-    //
-    // `const client = await clientPromise`
-    // `const db = client.db("myDatabase")`
-    //
-    // Then you can execute queries against your database like so:
-    // db.find({}) or any of the MongoDB Node Driver commands
+  const client = await clientPromise;
 
-    return {
-      props: { isConnected: true },
-    }
-  } catch (e) {
-    console.error(e)
-    return {
-      props: { isConnected: false },
-    }
-  }
+  const db = client.db("inventoryDb");
+
+  let items = await db.collection("inventory").find({}).toArray();
+  items = JSON.parse(JSON.stringify(items));
+
+  return {
+    props: { items },
+  };
 }
